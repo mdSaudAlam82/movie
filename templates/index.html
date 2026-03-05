@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HubLoader</title>
+<style>
+:root{
+  --bg:#08080f;--bg2:#0f0f1a;--bg3:#16162a;--bg4:#1e1e35;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --accent:#7c3aed;--accent2:#06b6d4;--accentg:linear-gradient(135deg,#7c3aed,#06b6d4);
+  --text:#e2e2f0;--muted:#7070a0;
+  --green:#10b981;--red:#ef4444;
+  --card-radius:12px;--modal-radius:18px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+/* ── Header ── */
+header{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:60px;display:flex;align-items:center;gap:14px;padding:0 20px;
+  background:rgba(8,8,15,0.93);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.logo-wrap{display:flex;flex-direction:column;gap:1px;flex-shrink:0}
+.logo{font-size:1.25rem;font-weight:900;letter-spacing:-1px;background:var(--accentg);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:.55rem;font-weight:500;-webkit-text-fill-color:#6060a0;letter-spacing:2px}
+
+.search-wrap{flex:1;max-width:440px;position:relative}
+.search-wrap svg.si{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+#searchInput{
+  width:100%;background:var(--bg3);border:1.5px solid var(--border);
+  color:var(--text);padding:8px 13px 8px 38px;border-radius:100px;
+  font-size:.9rem;outline:none;transition:border-color .2s,background .2s;
+}
+#searchInput::placeholder{color:var(--muted)}
+#searchInput:focus{border-color:var(--accent);background:var(--bg4)}
+
+/* FIX: URL paste input */
+.url-wrap{flex:1;max-width:340px;position:relative}
+.url-wrap svg.si{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+#urlInput{
+  width:100%;background:var(--bg3);border:1.5px solid var(--border);
+  color:var(--text);padding:8px 44px 8px 38px;border-radius:100px;
+  font-size:.82rem;outline:none;transition:border-color .2s;
+}
+#urlInput::placeholder{color:var(--muted)}
+#urlInput:focus{border-color:var(--accent2);background:var(--bg4)}
+.url-go{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  background:var(--accent2);border:none;color:#fff;
+  width:26px;height:26px;border-radius:50%;cursor:pointer;
+  font-size:.85rem;display:flex;align-items:center;justify-content:center;
+  transition:opacity .15s;
+}
+.url-go:hover{opacity:.8}
+
+.header-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
+#pageControlsTop{display:none;align-items:center;gap:6px}
+
+/* ── Main ── */
+main{padding:72px 20px 60px;max-width:1440px;margin:0 auto}
+
+.section-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;min-height:28px}
+.section-title{font-size:.95rem;font-weight:600;color:var(--muted)}
+.section-title span{color:var(--text)}
+.section-count{font-size:.78rem;color:var(--muted);background:var(--bg3);padding:3px 10px;border-radius:100px;border:1px solid var(--border)}
+
+/* ── Grid ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:12px}
+
+/* ── Card ── */
+.card{
+  cursor:pointer;border-radius:var(--card-radius);overflow:hidden;
+  background:var(--bg2);border:1px solid var(--border);
+  transition:transform .2s ease,box-shadow .2s ease,border-color .2s;
+  position:relative;
+}
+.card:hover{transform:translateY(-5px) scale(1.025);box-shadow:0 16px 48px rgba(0,0,0,.6);border-color:rgba(124,58,237,.35)}
+.card:active{transform:translateY(-2px) scale(1.01)}
+.card-poster-wrap{position:relative;width:100%;aspect-ratio:2/3;overflow:hidden;background:var(--bg3)}
+.card-poster{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
+.card:hover .card-poster{transform:scale(1.04)}
+.card-poster-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:linear-gradient(135deg,var(--bg3),var(--bg4))}
+.card-overlay{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(8,8,15,.96));padding:20px 10px 10px;opacity:0;transition:opacity .2s;text-align:center;font-size:.68rem;color:#a0a0d0}
+.card:hover .card-overlay{opacity:1}
+.card-body{padding:8px 10px 10px}
+.card-title{font-size:.74rem;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.badges{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;padding:2px 6px;border-radius:100px;font-size:.6rem;font-weight:700;letter-spacing:.3px}
+.b-series{background:rgba(124,58,237,.18);color:#b794f4;border:1px solid rgba(124,58,237,.28)}
+.b-movie{background:rgba(6,182,212,.12);color:#67e8f9;border:1px solid rgba(6,182,212,.22)}
+.b-4k{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.22)}
+
+/* ── Loader / Empty ── */
+.loader-wrap{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:70px;gap:14px}
+.spinner{width:38px;height:38px;border-radius:50%;border:3px solid var(--bg4);border-top-color:var(--accent);animation:spin .75s linear infinite}
+.spinner-sm{width:16px;height:16px;border-width:2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-txt{color:var(--muted);font-size:.88rem}
+.empty{grid-column:1/-1;text-align:center;padding:70px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.empty-icon{font-size:2.8rem}
+.empty-txt{color:var(--muted);font-size:.9rem}
+
+/* ── Pagination ── */
+.pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:32px;flex-wrap:wrap}
+.pg-btn{padding:7px 18px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);color:var(--text);cursor:pointer;font-size:.85rem;font-weight:500;transition:all .18s}
+.pg-btn:hover:not(:disabled){background:var(--accent);border-color:var(--accent);color:#fff}
+.pg-btn:disabled{opacity:.35;cursor:not-allowed}
+.pg-info{color:var(--muted);font-size:.85rem}
+
+/* ── Modal Overlay ── */
+.overlay{position:fixed;inset:0;z-index:500;background:rgba(4,4,10,.88);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .25s}
+.overlay.open{opacity:1;pointer-events:all}
+
+/* ── Modal ── */
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--modal-radius);width:100%;max-width:800px;max-height:90vh;overflow-y:auto;position:relative;transform:translateY(24px) scale(.97);transition:transform .25s ease;box-shadow:0 32px 80px rgba(0,0,0,.7)}
+.overlay.open .modal{transform:translateY(0) scale(1)}
+.modal-close{position:absolute;top:12px;right:12px;z-index:10;background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:.9rem;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.modal-close:hover{background:rgba(255,255,255,.14);color:var(--text)}
+
+.modal-top{display:flex;gap:20px;padding:22px}
+.modal-poster-col{flex-shrink:0;width:140px}
+.modal-poster-col img{width:100%;border-radius:9px;display:block;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.modal-poster-ph{width:140px;height:210px;border-radius:9px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:2.8rem}
+.modal-info{flex:1;min-width:0}
+.modal-title{font-size:1rem;font-weight:700;line-height:1.4;margin-bottom:8px}
+.meta-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.meta-chip{background:var(--bg3);border:1px solid var(--border);padding:2px 9px;border-radius:100px;font-size:.7rem;color:var(--muted)}
+.meta-chip b{color:var(--text)}
+
+.modal-body{padding:0 22px 22px}
+.section-lbl{font-size:.68rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.section-lbl::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Series: episodes + qualities tabs */
+.tab-bar{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.tab-btn{padding:7px 16px;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+.btn-grid{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+.dl-btn{padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-size:.8rem;font-weight:600;transition:all .18s;display:flex;align-items:center;gap:5px}
+.dl-btn:hover{background:var(--accent);border-color:var(--accent);color:#fff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(124,58,237,.3)}
+.dl-btn.ep-btn:hover{background:rgba(6,182,212,.2);border-color:var(--accent2);color:var(--accent2)}
+.dl-btn:disabled{opacity:.45;cursor:not-allowed;transform:none!important}
+.dl-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* Result box */
+.result-box{border-radius:10px;padding:14px;margin-top:8px;animation:slideUp .22s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.result-box.success{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25)}
+.result-box.error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22)}
+.res-label{font-size:.66rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.result-box.success .res-label{color:var(--green)}
+.result-box.error .res-label{color:var(--red)}
+.res-link{font-size:.76rem;word-break:break-all;color:var(--accent2);background:rgba(0,0,0,.3);padding:7px 9px;border-radius:6px;margin-bottom:10px;line-height:1.5}
+.res-actions{display:flex;gap:7px;flex-wrap:wrap}
+.act-btn{padding:7px 16px;border-radius:7px;font-size:.8rem;font-weight:700;cursor:pointer;transition:all .18s;border:none}
+.btn-copy{background:var(--accent);color:#fff}
+.btn-copy:hover{opacity:.85;transform:translateY(-1px)}
+.btn-open{background:var(--green);color:#fff}
+.btn-open:hover{opacity:.85;transform:translateY(-1px)}
+
+.modal-loading{display:flex;align-items:center;justify-content:center;padding:60px;flex-direction:column;gap:12px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--bg4);border:1px solid var(--border2);color:var(--text);padding:10px 20px;border-radius:100px;font-size:.85rem;z-index:999;transition:transform .3s ease;white-space:nowrap;box-shadow:0 8px 32px rgba(0,0,0,.5)}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:680px){
+  header{padding:0 12px;gap:8px}
+  .logo-sub,.url-wrap{display:none}
+  main{padding:68px 12px 50px}
+  .modal-top{flex-direction:column}
+  .modal-poster-col{width:100%;display:flex;justify-content:center}
+  .modal-poster-col img{width:120px}
+  .modal-poster-ph{width:120px;height:180px}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:9px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo-wrap">
+    <div class="logo">HubLoader</div>
+    <div class="logo-sub">HDHub4u</div>
+  </div>
+
+  <!-- Search by name -->
+  <div class="search-wrap">
+    <svg class="si" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="searchInput" placeholder="Search movies, web series..." autocomplete="off" spellcheck="false">
+  </div>
+
+  <!-- FIX: Direct URL paste -->
+  <div class="url-wrap">
+    <svg class="si" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+    <input type="text" id="urlInput" placeholder="Paste hdhub4u page URL..." autocomplete="off" spellcheck="false">
+    <button class="url-go" onclick="openFromUrl()" title="Open">→</button>
+  </div>
+
+  <div class="header-right">
+    <div id="pageControlsTop">
+      <button class="pg-btn" id="topPrev" onclick="changePage(-1)">←</button>
+      <span class="pg-info" id="topPageInfo">1</span>
+      <button class="pg-btn" id="topNext" onclick="changePage(1)">→</button>
+    </div>
+  </div>
+</header>
+
+<!-- ══ MAIN ══ -->
+<main>
+  <div class="section-bar">
+    <div class="section-title" id="sectionTitle"><span>Latest</span> Releases</div>
+    <div id="resultCount" style="display:none" class="section-count"></div>
+  </div>
+  <div id="gridWrap">
+    <div class="grid">
+      <div class="loader-wrap"><div class="spinner"></div><div class="loader-txt">Loading…</div></div>
+    </div>
+  </div>
+  <div id="pagination" class="pagination" style="display:none">
+    <button class="pg-btn" id="prevBtn" onclick="changePage(-1)" disabled>← Prev</button>
+    <span class="pg-info" id="pageInfo">Page 1</span>
+    <button class="pg-btn" id="nextBtn" onclick="changePage(1)">Next →</button>
+  </div>
+</main>
+
+<!-- ══ MODAL ══ -->
+<div class="overlay" id="overlay" onclick="onOverlayClick(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modalContent">
+      <div class="modal-loading"><div class="spinner"></div><div class="loader-txt">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+let currentPage = 1;
+let isSearch = false;
+let searchTimer = null;
+let lastQuery = '';
+
+// ── FIX: Browser history for back button ──────────────────────────────────
+window.addEventListener('popstate', e => {
+  if (e.state) {
+    if (e.state.type === 'search') {
+      document.getElementById('searchInput').value = e.state.q;
+      doSearch(e.state.q, false);
+    } else if (e.state.type === 'page') {
+      loadTrending(e.state.page, false);
+    } else if (e.state.type === 'modal') {
+      openModal(encodeURIComponent(e.state.url), false);
+    }
+  } else {
+    loadTrending(1, false);
+  }
+});
+
+window.onload = () => {
+  const s = history.state;
+  if (s && s.type === 'page') loadTrending(s.page, false);
+  else loadTrending(1, false);
+};
+
+// ── Search ────────────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input', e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  searchTimer = setTimeout(() => {
+    if (q === lastQuery) return;
+    lastQuery = q;
+    if (!q) { isSearch = false; loadTrending(1); }
+    else     { isSearch = true;  doSearch(q); }
+  }, 400);
+});
+
+// Enter key on search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    clearTimeout(searchTimer);
+    const q = e.target.value.trim();
+    if (q) { lastQuery = q; isSearch = true; doSearch(q); }
+  }
+});
+
+// ── FIX: Direct URL input ─────────────────────────────────────────────────
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') openFromUrl();
+});
+
+function openFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url || !url.startsWith('http')) { toast('⚠ Valid hdhub4u URL daalo'); return; }
+  openModal(encodeURIComponent(url));
+}
+
+// ── Load Trending ─────────────────────────────────────────────────────────
+async function loadTrending(page, pushState = true) {
+  currentPage = page;
+  isSearch = false;
+  if (pushState) history.pushState({type:'page', page}, '', `?page=${page}`);
+  showGridLoader();
+  setSectionTitle(`<span>Page ${page}</span> — Latest Releases`);
+  setResultCount('');
+  setPagination(false);
+  try {
+    const data = await get(`/api/trending?page=${page}`);
+    renderGrid(data);
+    if (data && data.length) setPagination(true, page);
+  } catch(e) { showGridError('Failed to load. Check server.'); }
+}
+
+// ── Search ────────────────────────────────────────────────────────────────
+async function doSearch(q, pushState = true) {
+  showGridLoader();
+  setSectionTitle(`Search: <span>"${esc(q)}"</span>`);
+  setPagination(false);
+  if (pushState) history.pushState({type:'search', q}, '', `?s=${encodeURIComponent(q)}`);
+  try {
+    const data = await get(`/api/search?q=${encodeURIComponent(q)}`);
+    renderGrid(data, true);
+    if (data) setResultCount(data.length + ' result' + (data.length !== 1 ? 's' : ''));
+  } catch(e) { showGridError('Search failed.'); }
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────
+function changePage(dir) {
+  if (isSearch) return;
+  loadTrending(Math.max(1, currentPage + dir));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function setPagination(show, page = 1) {
+  const pg = document.getElementById('pagination');
+  const top = document.getElementById('pageControlsTop');
+  pg.style.display = show ? 'flex' : 'none';
+  top.style.display = show ? 'flex' : 'none';
+  if (!show) return;
+  document.getElementById('prevBtn').disabled = page <= 1;
+  document.getElementById('topPrev').disabled = page <= 1;
+  document.getElementById('pageInfo').textContent = `Page ${page}`;
+  document.getElementById('topPageInfo').textContent = page;
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────────
+function showGridLoader() {
+  document.getElementById('gridWrap').innerHTML =
+    `<div class="grid"><div class="loader-wrap"><div class="spinner"></div><div class="loader-txt">Loading…</div></div></div>`;
+}
+function showGridError(msg) {
+  document.getElementById('gridWrap').innerHTML =
+    `<div class="grid"><div class="empty"><div class="empty-icon">⚠️</div><div class="empty-txt">${esc(msg)}</div></div></div>`;
+}
+function setSectionTitle(html) { document.getElementById('sectionTitle').innerHTML = html; }
+function setResultCount(txt) {
+  const el = document.getElementById('resultCount');
+  el.style.display = txt ? 'block' : 'none';
+  el.textContent = txt;
+}
+
+function renderGrid(items, search = false) {
+  if (!items || !items.length) {
+    document.getElementById('gridWrap').innerHTML =
+      `<div class="grid"><div class="empty"><div class="empty-icon">🎬</div><div class="empty-txt">${search ? 'No results found' : 'Nothing here'}</div></div></div>`;
+    return;
+  }
+  const cards = items.map(item => {
+    const has4k = /4k|2160/i.test(item.title);
+    const posterHtml = item.poster
+      ? `<img class="card-poster" src="${esc(item.poster)}" alt="" loading="lazy"
+              onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+      : '';
+    const phStyle = item.poster ? 'style="display:none"' : '';
+    const typeB = item.is_series
+      ? `<span class="badge b-series">● SERIES</span>`
+      : `<span class="badge b-movie">● MOVIE</span>`;
+    const k4B = has4k ? `<span class="badge b-4k">4K</span>` : '';
+    return `<div class="card" onclick="openModal('${encodeURIComponent(item.link)}')">
+      <div class="card-poster-wrap">
+        ${posterHtml}
+        <div class="card-poster-ph" ${phStyle}>🎬</div>
+        <div class="card-overlay">Click to download</div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">${esc(item.title)}</div>
+        <div class="badges">${typeB}${k4B}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('gridWrap').innerHTML = `<div class="grid">${cards}</div>`;
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────
+async function openModal(enc, pushState = true) {
+  const url = decodeURIComponent(enc);
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('modalContent').innerHTML =
+    `<div class="modal-loading"><div class="spinner"></div><div class="loader-txt">Fetching info…</div></div>`;
+  document.body.style.overflow = 'hidden';
+  if (pushState) history.pushState({type:'modal', url}, '', '');
+
+  try {
+    const data = await get(`/api/info?url=${encodeURIComponent(url)}`);
+    if (data.error) { showModalError(data.error); return; }
+    renderModal(data);
+  } catch(e) { showModalError('Failed to load info'); }
+}
+
+function showModalError(msg) {
+  document.getElementById('modalContent').innerHTML =
+    `<div class="modal-loading" style="color:var(--red)">${esc(msg)}</div>`;
+}
+
+function renderModal(d) {
+  const { title='', poster='', is_series=false, qualities=[], episodes=[], meta={} } = d;
+
+  const posterHtml = poster
+    ? `<img src="${esc(poster)}" alt="" onerror="this.parentElement.innerHTML='<div class=\\'modal-poster-ph\\'>🎬</div>'">`
+    : `<div class="modal-poster-ph">🎬</div>`;
+
+  const metaKeys = ['Rating','Language','Quality','Genre','Genres','Info'];
+  const metaHtml = Object.entries(meta).filter(([k])=>metaKeys.includes(k)).slice(0,5)
+    .map(([k,v])=>`<span class="meta-chip"><b>${esc(k)}</b>: ${esc(String(v).substring(0,55))}</span>`).join('');
+
+  const typeBadge = is_series
+    ? `<span class="badge b-series" style="font-size:.7rem;padding:3px 10px">● WEB SERIES</span>`
+    : `<span class="badge b-movie"  style="font-size:.7rem;padding:3px 10px">● MOVIE</span>`;
+
+  let bodyHtml = '';
+
+  if (is_series && episodes.length && qualities.length) {
+    // Both episodes AND quality buttons — show tabs
+    const epBtns = episodes.map(ep =>
+      `<button class="dl-btn ep-btn" onclick="doExtract(this,'${encodeURIComponent(ep.url)}')">${svgDl()} ${esc(ep.label)}</button>`
+    ).join('');
+    const qBtns = qualities.map(q =>
+      `<button class="dl-btn" onclick="doExtract(this,'${encodeURIComponent(q.url)}')">${svgDl()} ${esc(q.label)}</button>`
+    ).join('');
+    bodyHtml = `
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'tabEp')">Episodes (${episodes.length})</button>
+        <button class="tab-btn" onclick="switchTab(this,'tabQ')">Quality Pack</button>
+      </div>
+      <div id="tabEp" class="tab-panel active"><div class="btn-grid">${epBtns}</div></div>
+      <div id="tabQ"  class="tab-panel"><div class="btn-grid">${qBtns}</div></div>`;
+  } else if (is_series && episodes.length) {
+    const epBtns = episodes.map(ep =>
+      `<button class="dl-btn ep-btn" onclick="doExtract(this,'${encodeURIComponent(ep.url)}')">${svgDl()} ${esc(ep.label)}</button>`
+    ).join('');
+    bodyHtml = `<div class="section-lbl">Select Episode</div><div class="btn-grid">${epBtns}</div>`;
+  } else if (qualities.length) {
+    const qBtns = qualities.map(q =>
+      `<button class="dl-btn" onclick="doExtract(this,'${encodeURIComponent(q.url)}')">${svgDl()} ${esc(q.label)}</button>`
+    ).join('');
+    bodyHtml = `<div class="section-lbl">Select Quality</div><div class="btn-grid">${qBtns}</div>`;
+  } else {
+    bodyHtml = `<div style="color:var(--muted);font-size:.88rem;padding:8px 0">No download links found.</div>`;
+  }
+
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-top">
+      <div class="modal-poster-col">${posterHtml}</div>
+      <div class="modal-info">
+        <div class="modal-title">${esc(title)}</div>
+        <div style="margin-bottom:10px">${typeBadge}</div>
+        ${metaHtml ? `<div class="meta-row">${metaHtml}</div>` : ''}
+      </div>
+    </div>
+    <div class="modal-body">
+      ${bodyHtml}
+      <div id="resultArea"></div>
+    </div>`;
+}
+
+function switchTab(btn, panelId) {
+  btn.closest('.tab-bar').querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(panelId).classList.add('active');
+}
+
+// ── Extract ───────────────────────────────────────────────────────────────
+async function doExtract(btn, enc) {
+  const url = decodeURIComponent(enc);
+  const origHTML = btn.innerHTML;
+  document.getElementById('resultArea').innerHTML = '';
+  btn.closest('.btn-grid').querySelectorAll('.dl-btn').forEach(b => b.classList.remove('active'));
+  btn.innerHTML = `<div class="spinner spinner-sm"></div> Extracting…`;
+  btn.classList.add('active');
+  btn.disabled = true;
+
+  try {
+    const data = await post('/api/extract', { url });
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+    if (data.success) {
+      document.getElementById('resultArea').innerHTML = `
+        <div class="result-box success">
+          <div class="res-label">✓ Download Link Ready</div>
+          <div class="res-link">${esc(data.link)}</div>
+          <div class="res-actions">
+            <button class="act-btn btn-copy" onclick="copyLink('${escAttr(data.link)}')">📋 Copy</button>
+            <button class="act-btn btn-open" onclick="window.open('${escAttr(data.link)}','_blank')">⬇ Download</button>
+          </div>
+        </div>`;
+    } else {
+      document.getElementById('resultArea').innerHTML = `
+        <div class="result-box error">
+          <div class="res-label">✗ Failed</div>
+          <div style="font-size:.8rem;color:var(--muted);margin-top:4px">${esc(data.error||'Unknown error')}</div>
+        </div>`;
+    }
+  } catch(e) {
+    btn.innerHTML = origHTML; btn.disabled = false;
+    document.getElementById('resultArea').innerHTML = `
+      <div class="result-box error"><div class="res-label">✗ Network Error</div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${esc(e.message)}</div></div>`;
+  }
+}
+
+// ── Modal close ───────────────────────────────────────────────────────────
+function closeModal() {
+  document.getElementById('overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function onOverlayClick(e) { if (e.target===document.getElementById('overlay')) closeModal(); }
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+
+// ── Clipboard ─────────────────────────────────────────────────────────────
+function copyLink(link) {
+  const decoded = link.replace(/\\'/g,"'");
+  navigator.clipboard.writeText(decoded)
+    .then(()=>toast('✓ Copied!'))
+    .catch(()=>{ const t=document.createElement('textarea');t.value=decoded;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);toast('✓ Copied!'); });
+}
+
+let toastT;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2400);
+}
+
+async function get(url){const r=await fetch(url);if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
+async function post(url,body){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}
+function svgDl(){return`<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function escAttr(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+</script>
+</body>
+</html>
